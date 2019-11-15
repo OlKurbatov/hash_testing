@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"fmt"
+	"strconv"
 	"time"
 
 	"golang.org/x/crypto/blake2b"
@@ -32,14 +33,15 @@ func main() {
 
 	start := time.Now()
 
-	hash1 := sha1Hash([]byte("1"))
-	hash2 := sha1Hash([]byte("2"))
-	hash4 := merkleNode20(hash1, hash2, SHA1)
-	fmt.Printf("\n\n%x\n", hash4)
+	list := make(map[int][]byte)
+	for i := 0; i < 8; i++ {
+		list[i] = []byte(strconv.FormatInt(int64(i), 10))
+	}
+	fmt.Printf("%x", merkleHash20(list))
 
 	finish := time.Now()
 	elapsed := finish.Sub(start)
-	fmt.Printf("%f", elapsed.Minutes())
+	fmt.Printf("\n%f", elapsed.Minutes())
 }
 
 func sha1Hash(input []byte) [20]byte {
@@ -162,4 +164,21 @@ func merkleNodeScript(leaf1 []byte, leaf2 []byte, difParam int) []byte {
 	hash3 := append(hash1, hash2...)
 	hash4 := scrypt512Hash(hash3, difParam)
 	return hash4
+}
+
+func merkleHash20(data map[int][]byte) [20]byte {
+	layer0 := make(map[int][20]byte)
+	for i := 0; i < 8; i++ {
+		layer0[i] = sha1Hash(data[i])
+	}
+	layer1 := make(map[int][20]byte)
+	layer1[0] = merkleNode20(layer0[0], layer0[1], SHA1)
+	layer1[1] = merkleNode20(layer0[2], layer0[3], SHA1)
+	layer1[2] = merkleNode20(layer0[4], layer0[5], SHA1)
+	layer1[3] = merkleNode20(layer0[6], layer0[7], SHA1)
+	layer2 := make(map[int][20]byte)
+	layer2[0] = merkleNode20(layer1[0], layer1[1], SHA1)
+	layer2[1] = merkleNode20(layer1[2], layer1[3], SHA1)
+	hash := merkleNode20(layer2[0], layer2[1], SHA1)
+	return hash
 }
